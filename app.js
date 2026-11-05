@@ -1,4 +1,4 @@
-import { API_KEY, CATEGORIES } from './config.js?v=2';
+import { API_KEY, CATEGORIES } from './config.js?v=3';
 import {
   FIELD_MASK,
   SEARCH_URL,
@@ -7,7 +7,7 @@ import {
   filterAndSort,
   formatDistance,
   toRestaurant,
-} from './logic.js?v=2';
+} from './logic.js?v=3';
 
 const WITHIN_METERS = 500;
 const CIRCLE_PATH = 'M50 6C78 4 97 16 96 32C95 49 70 58 44 56C20 54 2 45 4 29C6 13 28 3 58 5';
@@ -17,17 +17,24 @@ const input = document.querySelector('#search-input');
 const categories = document.querySelector('#categories');
 const openOnly = document.querySelector('#open-only');
 const within500 = document.querySelector('#within-500');
+const affordable = document.querySelector('#affordable');
 const status = document.querySelector('#status');
 const results = document.querySelector('#results');
 const resultsBody = document.querySelector('#results-body');
+const attribution = document.querySelector('#attribution');
 
 let restaurants = [];
 let lastQuery = '';
 let latestSearch = 0;
 
+function showResults(visible) {
+  results.hidden = !visible;
+  attribution.hidden = !visible;
+}
+
 function showStatus(message) {
   status.textContent = message;
-  results.hidden = true;
+  showResults(false);
 }
 
 function renderCategories() {
@@ -80,11 +87,7 @@ async function fetchPlaces(query, location) {
     },
     body: JSON.stringify(buildSearchRequest(query, location)),
   });
-  if (!response.ok) {
-    const debugBody = await response.clone().json().catch(() => null); // [AI-DEBUG]
-    const debugReason = debugBody?.error?.details?.[0]?.reason ?? debugBody?.error?.status; // [AI-DEBUG]
-    throw new Error(`${describeApiError(response.status)} [AI-DEBUG] ${response.status} ${debugReason} key…${API_KEY.slice(-4)} ${navigator.userAgent}`); // [AI-DEBUG]
-  }
+  if (!response.ok) throw new Error(describeApiError(response.status));
   const data = await response.json();
   return data.places ?? [];
 }
@@ -162,6 +165,7 @@ function renderResults() {
   const visible = filterAndSort(restaurants, {
     openOnly: openOnly.checked,
     maxDistance: within500.checked ? WITHIN_METERS : Infinity,
+    affordable: affordable.checked,
   });
   resultsBody.replaceChildren();
   if (restaurants.length === 0) {
@@ -174,7 +178,7 @@ function renderResults() {
   }
   visible.forEach(renderRow);
   status.textContent = '';
-  results.hidden = false;
+  showResults(true);
 }
 
 form.addEventListener('submit', (event) => {
@@ -187,7 +191,7 @@ form.addEventListener('submit', (event) => {
 });
 
 // 篩選只在已取得的結果上運作，不會重新查詢，所以不花查詢額度。
-for (const filter of [openOnly, within500]) {
+for (const filter of [openOnly, within500, affordable]) {
   filter.addEventListener('change', () => {
     if (restaurants.length > 0) renderResults();
   });

@@ -42,3 +42,4 @@ gh api repos/{owner}/nearby-food/pages -X POST -f "source[branch]=main" -f "sour
 
 - 類型標籤：改 `config.js` 的 `CATEGORIES`，文字會直接當搜尋關鍵字。
 - 測試：`npm test`。
+- 更新檔案後：GitHub Pages 會讓瀏覽器快取 10 分鐘，舊手機可能繼續用舊檔。修改 `config.js`、`logic.js`、`app.js` 或 `style.css` 時，要把 `index.html` 和 `app.js` 裡的 `?v=` 版本號加一。

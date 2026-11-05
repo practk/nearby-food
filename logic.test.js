@@ -58,6 +58,7 @@ const FULL_PLACE = {
   location: { latitude: 25.033964, longitude: 121.564468 },
   rating: 4.5,
   userRatingCount: 120,
+  priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
   googleMapsUri: 'https://maps.google.com/?cid=1',
   currentOpeningHours: { openNow: true },
 };
@@ -70,6 +71,7 @@ test('toRestaurant 轉出畫面需要的欄位', () => {
     isOpen: true,
     rating: 4.5,
     ratingCount: 120,
+    priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
     mapsUrl: 'https://maps.google.com/?cid=1',
   });
 });
@@ -89,6 +91,11 @@ test('toRestaurant 沒有評分時 rating 為 null', () => {
   const result = toRestaurant(noRating, TAIPEI_101);
   assert.equal(result.rating, null);
   assert.equal(result.ratingCount, 0);
+});
+
+test('toRestaurant 沒有價位資料時 priceLevel 為 null', () => {
+  const { priceLevel, ...noPrice } = FULL_PLACE;
+  assert.equal(toRestaurant(noPrice, TAIPEI_101).priceLevel, null);
 });
 
 const LIST = [
@@ -115,6 +122,25 @@ test('filterAndSort 不改動傳入的陣列', () => {
   const before = ids(LIST);
   filterAndSort(LIST, { openOnly: true });
   assert.deepEqual(ids(LIST), before);
+});
+
+const CHEAP = 'PRICE_LEVEL_INEXPENSIVE';
+for (const [label, restaurant, kept] of [
+  ['平價且剛好 4.0 分', { rating: 4.0, priceLevel: CHEAP }, true],
+  ['平價但 3.9 分', { rating: 3.9, priceLevel: CHEAP }, false],
+  ['4.8 分但中等價位', { rating: 4.8, priceLevel: 'PRICE_LEVEL_MODERATE' }, false],
+  ['4.8 分但沒有價位資料', { rating: 4.8, priceLevel: null }, false],
+  ['平價但沒有評分', { rating: null, priceLevel: CHEAP }, false],
+]) {
+  test(`filterAndSort 平價篩選：${label}${kept ? '保留' : '排除'}`, () => {
+    const list = [{ id: 'x', distance: 100, isOpen: true, ...restaurant }];
+    assert.equal(filterAndSort(list, { affordable: true }).length, kept ? 1 : 0);
+  });
+}
+
+test('filterAndSort 未勾平價時不看價位和評分', () => {
+  const list = [{ id: 'x', distance: 100, isOpen: true, rating: null, priceLevel: null }];
+  assert.equal(filterAndSort(list, {}).length, 1);
 });
 
 for (const [status, keyword] of [

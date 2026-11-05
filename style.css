@@ -25,7 +25,7 @@ body {
   border-bottom: 2px solid var(--ink-red);
 }
 
-/* 頂部區塊約 280px 高，矮螢幕固定住會擠掉太多列表空間 */
+/* 頂部區塊約 300px 高，矮螢幕固定住會擠掉太多列表空間 */
 @media (min-height: 720px) {
   .sheet-head { position: sticky; top: 0; z-index: 1; }
 }
@@ -107,7 +107,7 @@ h1 {
   transition: stroke-dashoffset .28s ease-out;
 }
 
-.filters { display: flex; gap: 18px; margin-top: 10px; font-size: 15px; }
+.filters { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 15px; }
 
 .filters label { display: flex; align-items: center; gap: 6px; min-height: 28px; }
 
@@ -147,6 +147,8 @@ h1 {
 .closed { color: var(--ink-red); }
 
 .results a.distance { color: var(--ink-blue); font-size: 16px; font-weight: 700; }
+
+.attribution { margin: 0; padding: 10px 14px 24px; color: var(--muted); font-size: 13px; text-align: right; }
 
 @media (prefers-reduced-motion: reduce) {
   .category[aria-pressed='true'] path { transition: none; }
