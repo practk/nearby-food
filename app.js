@@ -1,18 +1,17 @@
-import { API_KEY, CATEGORIES } from './config.js?v=4';
+import { API_URL, CATEGORIES } from './config.js?v=5';
 import {
-  FIELD_MASK,
-  SEARCH_URL,
-  buildSearchRequest,
   describeApiError,
   filterAndSort,
   formatDistance,
+  formatUsage,
   toRestaurant,
-} from './logic.js?v=4';
+} from './logic.js?v=5';
 
 const WITHIN_METERS = 500;
 const MIN_RATING = 4.0;
 // Google 規定 AI 評論摘要要附上「資料如何產生」的說明連結
 const ABOUT_SUMMARY_URL = 'https://support.google.com/local-listings/answer/9851099';
+const CODE_STORAGE_KEY = 'nearby-food-access-code';
 const CIRCLE_PATH = 'M50 6C78 4 97 16 96 32C95 49 70 58 44 56C20 54 2 45 4 29C6 13 28 3 58 5';
 
 const form = document.querySelector('#search-form');
@@ -25,6 +24,9 @@ const status = document.querySelector('#status');
 const results = document.querySelector('#results');
 const resultsBody = document.querySelector('#results-body');
 const attribution = document.querySelector('#attribution');
+const codeForm = document.querySelector('#code-form');
+const codeInput = document.querySelector('#code-input');
+const usageLine = document.querySelector('#usage');
 
 let restaurants = [];
 let lastQuery = '';
@@ -38,6 +40,12 @@ function showResults(visible) {
 function showStatus(message) {
   status.textContent = message;
   showResults(false);
+}
+
+function showCodeForm(message) {
+  localStorage.removeItem(CODE_STORAGE_KEY);
+  codeForm.hidden = false;
+  showStatus(message);
 }
 
 function renderCategories() {
@@ -80,28 +88,43 @@ function getPosition() {
   });
 }
 
-async function fetchPlaces(query, location) {
-  const response = await fetch(SEARCH_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': API_KEY,
-      'X-Goog-FieldMask': FIELD_MASK,
-    },
-    body: JSON.stringify(buildSearchRequest(query, location)),
+async function callApi(path, init = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { ...init.headers, 'X-Access-Code': localStorage.getItem(CODE_STORAGE_KEY) },
   });
-  if (!response.ok) throw new Error(describeApiError(response.status));
-  const data = await response.json();
-  return data.places ?? [];
+  const data = await response.json().catch(() => ({}));
+  if (data.usage) usageLine.textContent = formatUsage(data.usage);
+  if (!response.ok) {
+    throw Object.assign(new Error(describeApiError(response.status)), { status: response.status });
+  }
+  return data;
+}
+
+async function fetchPlaces(query, location) {
+  const { places } = await callApi('/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, location }),
+  });
+  return places;
+}
+
+async function loadUsage() {
+  try {
+    await callApi('/usage');
+  } catch (error) {
+    if (error.status === 401) showCodeForm(error.message);
+  }
 }
 
 async function search(query) {
-  if (!API_KEY) {
-    showStatus('還沒有設定 API 金鑰，請在 config.js 填入。');
-    return;
-  }
   lastQuery = query;
   restaurants = [];
+  if (!localStorage.getItem(CODE_STORAGE_KEY)) {
+    showCodeForm('輸入密碼後就能查詢。');
+    return;
+  }
   // 連續點不同類型時，只顯示最後一次查詢的結果，避免慢回來的舊結果蓋掉新的。
   const searchId = ++latestSearch;
   showStatus('正在取得你的位置');
@@ -124,6 +147,10 @@ async function search(query) {
     renderResults();
   } catch (error) {
     if (searchId !== latestSearch) return;
+    if (error.status === 401) {
+      showCodeForm(error.message);
+      return;
+    }
     const isNetworkError = error instanceof TypeError;
     showStatus(isNetworkError ? '連不上網路，請確認連線後再查詢一次。' : error.message);
   }
@@ -232,6 +259,22 @@ form.addEventListener('submit', (event) => {
   search(query);
 });
 
+codeForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const code = codeInput.value.trim();
+  if (!code) return;
+  localStorage.setItem(CODE_STORAGE_KEY, code);
+  codeInput.value = '';
+  codeInput.blur();
+  codeForm.hidden = true;
+  if (lastQuery) {
+    search(lastQuery);
+  } else {
+    showStatus('點一個類型，或輸入想吃的。');
+    loadUsage();
+  }
+});
+
 // 篩選只在已取得的結果上運作，不會重新查詢，所以不花查詢額度。
 for (const filter of [openOnly, within500, minRating]) {
   filter.addEventListener('change', () => {
@@ -240,4 +283,9 @@ for (const filter of [openOnly, within500, minRating]) {
 }
 
 renderCategories();
-showStatus('點一個類型，或輸入想吃的。');
+if (localStorage.getItem(CODE_STORAGE_KEY)) {
+  showStatus('點一個類型，或輸入想吃的。');
+  loadUsage();
+} else {
+  showCodeForm('輸入密碼後就能查詢。');
+}

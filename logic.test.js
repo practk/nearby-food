@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildSearchRequest,
   describeApiError,
   distanceMeters,
   filterAndSort,
   formatDistance,
+  formatUsage,
   toRestaurant,
 } from './logic.js';
 
@@ -31,26 +31,6 @@ for (const [meters, want] of [
     assert.equal(formatDistance(meters), want);
   });
 }
-
-test('buildSearchRequest 以使用者位置為中心查繁中結果', () => {
-  assert.deepEqual(buildSearchRequest('麵', TAIPEI_101), {
-    textQuery: '麵',
-    languageCode: 'zh-TW',
-    regionCode: 'TW',
-    rankPreference: 'DISTANCE',
-    pageSize: 20,
-    locationBias: {
-      circle: {
-        center: { latitude: 25.033964, longitude: 121.564468 },
-        radius: 2000,
-      },
-    },
-  });
-});
-
-test('buildSearchRequest 去除關鍵字前後空白', () => {
-  assert.equal(buildSearchRequest('  牛肉麵 ', TAIPEI_101).textQuery, '牛肉麵');
-});
 
 const FULL_PLACE = {
   id: 'abc',
@@ -153,11 +133,16 @@ test('filterAndSort 沒設評價下限時保留沒有評分的店', () => {
 });
 
 for (const [status, keyword] of [
-  [403, '金鑰'],
-  [429, '上限'],
+  [401, '密碼'],
+  [429, '用完'],
+  [502, '稍後'],
   [500, '稍後'],
 ]) {
   test(`describeApiError(${status}) 提到「${keyword}」`, () => {
     assert.match(describeApiError(status), new RegExp(keyword));
   });
 }
+
+test('formatUsage 顯示今日與本月的合計用量', () => {
+  assert.equal(formatUsage({ today: 12, dailyLimit: 32, month: 140 }), '今日 12／32 次，本月 140 次');
+});

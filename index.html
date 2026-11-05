@@ -8,11 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <header class="sheet-head">
     <h1>今天吃什麼</h1>
+    <form id="code-form" class="search code-form" hidden>
+      <input id="code-input" type="password" placeholder="輸入密碼" aria-label="輸入密碼" autocomplete="current-password">
+      <button type="submit">確認</button>
+    </form>
     <form id="search-form" class="search" role="search">
       <input id="search-input" type="search" placeholder="想吃什麼，或輸入店名" aria-label="想吃什麼，或輸入店名" enterkeyhint="search" autocomplete="off">
       <button type="submit">查詢</button>
@@ -23,6 +27,7 @@
       <label><input id="within-500" type="checkbox" checked>500 公尺內</label>
       <label><input id="min-rating" type="checkbox" checked>評價 4.0 以上</label>
     </div>
+    <p id="usage" class="usage"></p>
   </header>
   <main>
     <p id="status" class="status" role="status"></p>
@@ -32,6 +37,6 @@
     </table>
     <p id="attribution" class="attribution" hidden>資料來源：Google Maps</p>
   </main>
-  <script type="module" src="app.js?v=4"></script>
+  <script type="module" src="app.js?v=5"></script>
 </body>
 </html>

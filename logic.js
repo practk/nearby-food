@@ -1,19 +1,4 @@
-export const SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
-
-// 這些欄位決定計費層級：reviewSummary 屬於最高的 Enterprise + Atmosphere，每次查詢都以該層級計費。
-export const FIELD_MASK = [
-  'places.id',
-  'places.displayName',
-  'places.location',
-  'places.googleMapsUri',
-  'places.rating',
-  'places.userRatingCount',
-  'places.reviewSummary',
-  'places.currentOpeningHours.openNow',
-].join(',');
-
 const EARTH_RADIUS_METERS = 6371000;
-const SEARCH_RADIUS_METERS = 2000;
 
 const toRadians = (degrees) => (degrees * Math.PI) / 180;
 
@@ -28,22 +13,6 @@ export function distanceMeters(a, b) {
 
 export function formatDistance(meters) {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
-}
-
-export function buildSearchRequest(query, location) {
-  return {
-    textQuery: query.trim(),
-    languageCode: 'zh-TW',
-    regionCode: 'TW',
-    rankPreference: 'DISTANCE',
-    pageSize: 20,
-    locationBias: {
-      circle: {
-        center: { latitude: location.latitude, longitude: location.longitude },
-        radius: SEARCH_RADIUS_METERS,
-      },
-    },
-  };
 }
 
 // Google 規定 AI 摘要必須附上 Gemini 標示，缺標示時寧可不顯示。
@@ -81,10 +50,11 @@ export function filterAndSort(restaurants, { openOnly = false, maxDistance = Inf
 }
 
 export function describeApiError(status) {
-  if (status === 400 || status === 401 || status === 403) {
-    return 'API 金鑰無效或未授權這個網址，請檢查金鑰設定。';
-  }
-  // Google 的每日配額在太平洋時間午夜重置，換算台灣時間是下午 3 或 4 點（依日光節約時間）。
-  if (status === 429) return '查詢次數已達上限，台灣時間下午 3 到 4 點會自動恢復。';
+  if (status === 401) return '密碼不正確，請重新輸入。';
+  if (status === 429) return '今天的查詢次數已用完，台灣時間午夜會恢復。';
   return '查詢失敗，請稍後再試。';
+}
+
+export function formatUsage({ today, dailyLimit, month }) {
+  return `今日 ${today}／${dailyLimit} 次，本月 ${month} 次`;
 }

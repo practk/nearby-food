@@ -38,6 +38,10 @@ h1 {
   text-align: center;
 }
 
+.code-form { margin-bottom: 8px; }
+
+.search[hidden] { display: none; }
+
 .search { display: flex; border: 1.5px solid var(--ink-red); background: var(--paper-light); }
 
 .search input {
@@ -112,6 +116,10 @@ h1 {
 .filters label { display: flex; align-items: center; gap: 6px; min-height: 28px; }
 
 .filters input { width: 20px; height: 20px; margin: 0; accent-color: var(--ink-blue); }
+
+.usage { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+.usage:empty { display: none; }
 
 :focus-visible { outline: 3px solid var(--ink-blue); outline-offset: 2px; }
 

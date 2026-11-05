@@ -1,0 +1,11 @@
+{
+  "name": "nearby-food-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.80.0"
+  }
+}
