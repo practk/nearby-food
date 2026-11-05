@@ -1,4 +1,4 @@
-import { API_KEY, CATEGORIES } from './config.js';
+import { API_KEY, CATEGORIES } from './config.js?v=2';
 import {
   FIELD_MASK,
   SEARCH_URL,
@@ -7,7 +7,7 @@ import {
   filterAndSort,
   formatDistance,
   toRestaurant,
-} from './logic.js';
+} from './logic.js?v=2';
 
 const WITHIN_METERS = 500;
 const CIRCLE_PATH = 'M50 6C78 4 97 16 96 32C95 49 70 58 44 56C20 54 2 45 4 29C6 13 28 3 58 5';
@@ -80,7 +80,11 @@ async function fetchPlaces(query, location) {
     },
     body: JSON.stringify(buildSearchRequest(query, location)),
   });
-  if (!response.ok) throw new Error(describeApiError(response.status));
+  if (!response.ok) {
+    const debugBody = await response.clone().json().catch(() => null); // [AI-DEBUG]
+    const debugReason = debugBody?.error?.details?.[0]?.reason ?? debugBody?.error?.status; // [AI-DEBUG]
+    throw new Error(`${describeApiError(response.status)} [AI-DEBUG] ${response.status} ${debugReason} key…${API_KEY.slice(-4)} ${navigator.userAgent}`); // [AI-DEBUG]
+  }
   const data = await response.json();
   return data.places ?? [];
 }
