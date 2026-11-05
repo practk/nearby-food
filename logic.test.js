@@ -58,9 +58,14 @@ const FULL_PLACE = {
   location: { latitude: 25.033964, longitude: 121.564468 },
   rating: 4.5,
   userRatingCount: 120,
-  priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
   googleMapsUri: 'https://maps.google.com/?cid=1',
   currentOpeningHours: { openNow: true },
+  reviewSummary: {
+    text: { text: '顧客稱讚牛肉軟嫩。\n\n部分評論提到偏鹹。', languageCode: 'zh-TW' },
+    disclosureText: { text: '摘要由 Gemini 生成', languageCode: 'zh-TW' },
+    flagContentUri: 'https://www.google.com/flag',
+    reviewsUri: 'https://www.google.com/reviews',
+  },
 };
 
 test('toRestaurant 轉出畫面需要的欄位', () => {
@@ -71,8 +76,13 @@ test('toRestaurant 轉出畫面需要的欄位', () => {
     isOpen: true,
     rating: 4.5,
     ratingCount: 120,
-    priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
     mapsUrl: 'https://maps.google.com/?cid=1',
+    summary: {
+      text: '顧客稱讚牛肉軟嫩。\n\n部分評論提到偏鹹。',
+      disclosure: '摘要由 Gemini 生成',
+      flagUrl: 'https://www.google.com/flag',
+      reviewsUrl: 'https://www.google.com/reviews',
+    },
   });
 });
 
@@ -93,9 +103,15 @@ test('toRestaurant 沒有評分時 rating 為 null', () => {
   assert.equal(result.ratingCount, 0);
 });
 
-test('toRestaurant 沒有價位資料時 priceLevel 為 null', () => {
-  const { priceLevel, ...noPrice } = FULL_PLACE;
-  assert.equal(toRestaurant(noPrice, TAIPEI_101).priceLevel, null);
+test('toRestaurant 沒有 AI 評論摘要時 summary 為 null', () => {
+  const { reviewSummary, ...noSummary } = FULL_PLACE;
+  assert.equal(toRestaurant(noSummary, TAIPEI_101).summary, null);
+});
+
+test('toRestaurant 摘要缺少 Gemini 標示時不顯示摘要', () => {
+  const { disclosureText, ...unlabeled } = FULL_PLACE.reviewSummary;
+  const place = { ...FULL_PLACE, reviewSummary: unlabeled };
+  assert.equal(toRestaurant(place, TAIPEI_101).summary, null);
 });
 
 const LIST = [
@@ -124,22 +140,15 @@ test('filterAndSort 不改動傳入的陣列', () => {
   assert.deepEqual(ids(LIST), before);
 });
 
-const CHEAP = 'PRICE_LEVEL_INEXPENSIVE';
-for (const [label, restaurant, kept] of [
-  ['平價且剛好 4.0 分', { rating: 4.0, priceLevel: CHEAP }, true],
-  ['平價但 3.9 分', { rating: 3.9, priceLevel: CHEAP }, false],
-  ['4.8 分但中等價位', { rating: 4.8, priceLevel: 'PRICE_LEVEL_MODERATE' }, false],
-  ['4.8 分但沒有價位資料', { rating: 4.8, priceLevel: null }, false],
-  ['平價但沒有評分', { rating: null, priceLevel: CHEAP }, false],
-]) {
-  test(`filterAndSort 平價篩選：${label}${kept ? '保留' : '排除'}`, () => {
-    const list = [{ id: 'x', distance: 100, isOpen: true, ...restaurant }];
-    assert.equal(filterAndSort(list, { affordable: true }).length, kept ? 1 : 0);
+for (const [rating, kept] of [[4.0, true], [3.9, false], [null, false]]) {
+  test(`filterAndSort 評價下限 4.0 時，評分 ${rating} ${kept ? '保留' : '排除'}`, () => {
+    const list = [{ id: 'x', distance: 100, isOpen: true, rating }];
+    assert.equal(filterAndSort(list, { minRating: 4.0 }).length, kept ? 1 : 0);
   });
 }
 
-test('filterAndSort 未勾平價時不看價位和評分', () => {
-  const list = [{ id: 'x', distance: 100, isOpen: true, rating: null, priceLevel: null }];
+test('filterAndSort 沒設評價下限時保留沒有評分的店', () => {
+  const list = [{ id: 'x', distance: 100, isOpen: true, rating: null }];
   assert.equal(filterAndSort(list, {}).length, 1);
 });
 

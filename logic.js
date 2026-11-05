@@ -1,6 +1,6 @@
 export const SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
 
-// 這些欄位決定計費層級：rating、營業時間、priceLevel 屬於 Enterprise，再加 Atmosphere 類欄位（如 reviews）會更貴。
+// 這些欄位決定計費層級：reviewSummary 屬於最高的 Enterprise + Atmosphere，每次查詢都以該層級計費。
 export const FIELD_MASK = [
   'places.id',
   'places.displayName',
@@ -8,14 +8,12 @@ export const FIELD_MASK = [
   'places.googleMapsUri',
   'places.rating',
   'places.userRatingCount',
-  'places.priceLevel',
+  'places.reviewSummary',
   'places.currentOpeningHours.openNow',
 ].join(',');
 
 const EARTH_RADIUS_METERS = 6371000;
 const SEARCH_RADIUS_METERS = 2000;
-const AFFORDABLE_PRICE_LEVEL = 'PRICE_LEVEL_INEXPENSIVE';
-const AFFORDABLE_MIN_RATING = 4.0;
 
 const toRadians = (degrees) => (degrees * Math.PI) / 180;
 
@@ -48,6 +46,19 @@ export function buildSearchRequest(query, location) {
   };
 }
 
+// Google 規定 AI 摘要必須附上 Gemini 標示，缺標示時寧可不顯示。
+function toSummary(reviewSummary) {
+  const text = reviewSummary?.text?.text;
+  const disclosure = reviewSummary?.disclosureText?.text;
+  if (!text || !disclosure) return null;
+  return {
+    text,
+    disclosure,
+    flagUrl: reviewSummary.flagContentUri,
+    reviewsUrl: reviewSummary.reviewsUri,
+  };
+}
+
 export function toRestaurant(place, origin) {
   return {
     id: place.id,
@@ -56,21 +67,16 @@ export function toRestaurant(place, origin) {
     isOpen: place.currentOpeningHours?.openNow ?? null,
     rating: place.rating ?? null,
     ratingCount: place.userRatingCount ?? 0,
-    priceLevel: place.priceLevel ?? null,
     mapsUrl: place.googleMapsUri,
+    summary: toSummary(place.reviewSummary),
   };
 }
 
-// 台灣的 PRICE_LEVEL_INEXPENSIVE 約是每人 NT$200 以下。沒有價位或評分就無法確認，勾選時一律排除。
-function isAffordable(restaurant) {
-  return restaurant.priceLevel === AFFORDABLE_PRICE_LEVEL && restaurant.rating >= AFFORDABLE_MIN_RATING;
-}
-
 // 營業時間不明的店不算已打烊，「只看營業中」時保留，避免漏掉 Google 沒有時間資料的小店。
-export function filterAndSort(restaurants, { openOnly = false, maxDistance = Infinity, affordable = false }) {
+export function filterAndSort(restaurants, { openOnly = false, maxDistance = Infinity, minRating = 0 }) {
   return restaurants
     .filter((r) => !(openOnly && r.isOpen === false) && r.distance <= maxDistance)
-    .filter((r) => !affordable || isAffordable(r))
+    .filter((r) => (r.rating ?? 0) >= minRating)
     .sort((a, b) => a.distance - b.distance);
 }
 

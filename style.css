@@ -148,6 +148,18 @@ h1 {
 
 .results a.distance { color: var(--ink-blue); font-size: 16px; font-weight: 700; }
 
+.summary { padding: 0 0 12px 14px; font-size: 14px; }
+
+.summary-title { margin: 0; color: var(--ink-red); font-size: 13px; font-weight: 700; }
+
+.summary-text { margin: 2px 0 0; white-space: pre-line; }
+
+.summary-disclosure { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+
+.summary-links { display: flex; flex-wrap: wrap; gap: 0 14px; margin-top: 2px; }
+
+.results .summary-links a { padding: 6px 0; color: var(--ink-blue); font-size: 13px; text-decoration: underline; }
+
 .attribution { margin: 0; padding: 10px 14px 24px; color: var(--muted); font-size: 13px; text-align: right; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,4 +1,4 @@
-import { API_KEY, CATEGORIES } from './config.js?v=3';
+import { API_KEY, CATEGORIES } from './config.js?v=4';
 import {
   FIELD_MASK,
   SEARCH_URL,
@@ -7,9 +7,12 @@ import {
   filterAndSort,
   formatDistance,
   toRestaurant,
-} from './logic.js?v=3';
+} from './logic.js?v=4';
 
 const WITHIN_METERS = 500;
+const MIN_RATING = 4.0;
+// Google 規定 AI 評論摘要要附上「資料如何產生」的說明連結
+const ABOUT_SUMMARY_URL = 'https://support.google.com/local-listings/answer/9851099';
 const CIRCLE_PATH = 'M50 6C78 4 97 16 96 32C95 49 70 58 44 56C20 54 2 45 4 29C6 13 28 3 58 5';
 
 const form = document.querySelector('#search-form');
@@ -17,7 +20,7 @@ const input = document.querySelector('#search-input');
 const categories = document.querySelector('#categories');
 const openOnly = document.querySelector('#open-only');
 const within500 = document.querySelector('#within-500');
-const affordable = document.querySelector('#affordable');
+const minRating = document.querySelector('#min-rating');
 const status = document.querySelector('#status');
 const results = document.querySelector('#results');
 const resultsBody = document.querySelector('#results-body');
@@ -126,12 +129,49 @@ async function search(query) {
   }
 }
 
-function renderRow(restaurant) {
-  const row = resultsBody.insertRow();
+function externalLink(href) {
   const link = document.createElement('a');
-  link.href = restaurant.mapsUrl;
+  link.href = href;
   link.target = '_blank';
   link.rel = 'noopener';
+  return link;
+}
+
+function textElement(tag, className, text) {
+  const element = document.createElement(tag);
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+// Google 規定評論摘要要完整顯示，並附上標題、緊接在下方且不可改動的 Gemini 標示，以及三個連結。
+function renderSummary(summary) {
+  const box = document.createElement('div');
+  box.className = 'summary';
+  box.append(
+    textElement('h2', 'summary-title', '評論摘要'),
+    textElement('p', 'summary-text', summary.text),
+    textElement('p', 'summary-disclosure', summary.disclosure),
+  );
+
+  const links = document.createElement('div');
+  links.className = 'summary-links';
+  for (const [href, text] of [
+    [summary.reviewsUrl, '看評論'],
+    [summary.flagUrl, '回報摘要'],
+    [ABOUT_SUMMARY_URL, '關於這份摘要'],
+  ]) {
+    const link = externalLink(href);
+    link.textContent = text;
+    links.append(link);
+  }
+  box.append(links);
+  return box;
+}
+
+function renderRow(restaurant) {
+  const row = resultsBody.insertRow();
+  const link = externalLink(restaurant.mapsUrl);
 
   const name = document.createElement('span');
   name.className = 'name';
@@ -151,13 +191,15 @@ function renderRow(restaurant) {
     detail.append(rating);
   }
 
-  const distanceLink = link.cloneNode(false);
+  const distanceLink = externalLink(restaurant.mapsUrl);
   distanceLink.tabIndex = -1;
   distanceLink.className = 'distance';
   distanceLink.textContent = formatDistance(restaurant.distance);
 
   link.append(name, detail);
-  row.insertCell().append(link);
+  const nameCell = row.insertCell();
+  nameCell.append(link);
+  if (restaurant.summary) nameCell.append(renderSummary(restaurant.summary));
   row.insertCell().append(distanceLink);
 }
 
@@ -165,7 +207,7 @@ function renderResults() {
   const visible = filterAndSort(restaurants, {
     openOnly: openOnly.checked,
     maxDistance: within500.checked ? WITHIN_METERS : Infinity,
-    affordable: affordable.checked,
+    minRating: minRating.checked ? MIN_RATING : 0,
   });
   resultsBody.replaceChildren();
   if (restaurants.length === 0) {
@@ -191,7 +233,7 @@ form.addEventListener('submit', (event) => {
 });
 
 // 篩選只在已取得的結果上運作，不會重新查詢，所以不花查詢額度。
-for (const filter of [openOnly, within500, affordable]) {
+for (const filter of [openOnly, within500, minRating]) {
   filter.addEventListener('change', () => {
     if (restaurants.length > 0) renderResults();
   });
